@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Tic Tac Toe</title>
+
+<style>
+body {
+    font-family: 'Segoe UI', sans-serif;
+    text-align: center;
+    background: linear-gradient(135deg, #74ebd5, #acb6e5);
+    margin: 0;
+    padding: 0;
+}
+
+h1 {
+    margin-top: 20px;
+    color: #333;
+}
+
+#choice {
+    margin-top: 30px;
+}
+
+button {
+    padding: 10px 20px;
+    font-size: 1em;
+    margin: 10px;
+    border: none;
+    border-radius: 8px;
+    background: #ff7eb3;
+    color: white;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+button:hover {
+    background: #ff4f91;
+}
+
+#game {
+    display: none;
+}
+
+.board-container {
+    position: relative;
+    width: 315px;
+    margin: 20px auto;
+}
+
+.board {
+    display: grid;
+    grid-template-columns: repeat(3, 100px);
+    gap: 5px;
+}
+
+.cell {
+    width: 100px;
+    height: 100px;
+    background: white;
+    font-size: 2.5em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.cell:hover {
+    background: #f0f0f0;
+}
+
+#status {
+    font-size: 1.2em;
+    color: #333;
+}
+
+/* Winning line */
+#line {
+    position: absolute;
+    height: 5px;
+    background: red;
+    width: 0;
+    top: 0;
+    left: 0;
+    transform-origin: left center;
+}
+
+/* Confetti canvas */
+#confetti {
+    position: fixed;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+}
+</style>
+</head>
+
+<body>
+
+<h1>🎮 Tic Tac Toe</h1>
+
+<div id="choice">
+    <p>Choose your symbol:</p>
+    <button onclick="startGame('X')">Play as X</button>
+    <button onclick="startGame('O')">Play as O</button>
+</div>
+
+<div id="game">
+    <div id="status"></div>
+
+    <div class="board-container">
+        <div id="line"></div>
+        <div class="board" id="board"></div>
+    </div>
+
+    <button onclick="resetGame()">Restart</button>
+</div>
+
+<canvas id="confetti"></canvas>
+
+<script>
+let board = ["","","","","","","","",""];
+let player, computer;
+let currentTurn = "X";
+let gameActive = true;
+
+const winPatterns = [
+    [0,1,2],[3,4,5],[6,7,8],
+    [0,3,6],[1,4,7],[2,5,8],
+    [0,4,8],[2,4,6]
+];
+
+function startGame(choice){
+    player = choice;
+    computer = choice === "X" ? "O" : "X";
+
+    document.getElementById("choice").style.display="none";
+    document.getElementById("game").style.display="block";
+
+    drawBoard();
+    updateStatus();
+
+    if(computer==="X") computerMove();
+}
+
+function drawBoard(){
+    const boardDiv = document.getElementById("board");
+    boardDiv.innerHTML = "";
+
+    board.forEach((val,i)=>{
+        const cell = document.createElement("div");
+        cell.className="cell";
+        cell.innerText = val;
+        cell.onclick = ()=>handleMove(i);
+        boardDiv.appendChild(cell);
+    });
+}
+
+function handleMove(i){
+    if(!gameActive || board[i]!=="" || currentTurn!==player) return;
+
+    board[i]=player;
+    currentTurn=computer;
+    drawBoard();
+
+    if(checkWinner(player)) return endGame("You win!", true);
+    if(board.every(c=>c)) return endGame("Draw!");
+
+    computerMove();
+}
+
+function computerMove(){
+    let empty = board.map((v,i)=>v===""?i:null).filter(v=>v!==null);
+    let move = empty[Math.floor(Math.random()*empty.length)];
+
+    board[move]=computer;
+    currentTurn=player;
+    drawBoard();
+
+    if(checkWinner(computer)) return endGame("Computer wins!");
+    if(board.every(c=>c)) return endGame("Draw!");
+
+    updateStatus();
+}
+
+function checkWinner(sym){
+    for(let pattern of winPatterns){
+        if(pattern.every(i=>board[i]===sym)){
+            drawWinningLine(pattern);
+            return true;
+        }
+    }
+    return false;
+}
+
+function updateStatus(){
+    document.getElementById("status").innerText =
+        currentTurn===player ? "Your turn" : "Computer's turn";
+}
+
+function endGame(msg, isPlayerWin=false){
+    document.getElementById("status").innerText = msg;
+    gameActive=false;
+    if(isPlayerWin) startConfetti();
+}
+
+/* Draw winning line */
+function drawWinningLine(pattern){
+    const line = document.getElementById("line");
+
+    const positions = {
+        "0,1,2": {top:50,left:0,rotate:0},
+        "3,4,5": {top:155,left:0,rotate:0},
+        "6,7,8": {top:260,left:0,rotate:0},
+        "0,3,6": {top:0,left:50,rotate:90},
+        "1,4,7": {top:0,left:155,rotate:90},
+        "2,5,8": {top:0,left:260,rotate:90},
+        "0,4,8": {top:0,left:0,rotate:45},
+        "2,4,6": {top:0,left:315,rotate:-45}
+    };
+
+    let key = pattern.join(",");
+    let pos = positions[key];
+
+    line.style.width = "315px";
+    line.style.top = pos.top + "px";
+    line.style.left = pos.left + "px";
+    line.style.transform = `rotate(${pos.rotate}deg)`;
+}
+
+/* Confetti */
+function startConfetti(){
+    const canvas = document.getElementById("confetti");
+    const ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    let pieces = Array.from({length:150}, ()=>({
+        x: Math.random()*canvas.width,
+        y: Math.random()*canvas.height,
+        size: Math.random()*8+2,
+        speed: Math.random()*3+2
+    }));
+
+    function update(){
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        pieces.forEach(p=>{
+            p.y += p.speed;
+            if(p.y>canvas.height) p.y=0;
+            ctx.fillRect(p.x,p.y,p.size,p.size);
+        });
+        requestAnimationFrame(update);
+    }
+    update();
+}
+
+function resetGame(){
+    board = ["","","","","","","","",""];
+    currentTurn="X";
+    gameActive=true;
+
+    document.getElementById("line").style.width="0";
+    document.getElementById("confetti").getContext("2d").clearRect(0,0,window.innerWidth,window.innerHeight);
+
+    document.getElementById("choice").style.display="block";
+    document.getElementById("game").style.display="none";
+}
+</script>
+<a href="index.html">Resume</a>
+<a href="FromScratch.html">My Travels</a>
+</body>
+</html>
